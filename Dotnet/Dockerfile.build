@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/dotnet/aspnet:3.1 AS base
+WORKDIR /app
+EXPOSE 80
+
+FROM mcr.microsoft.com/dotnet/sdk:3.1 AS build
+WORKDIR /src
+COPY ["Code/BugCheckYML.Api/BugCheckYML.Api.csproj", "Code/BugCheckYML.Api/"]
+COPY ["Code/BugCheckYML.Business/BugCheckYML.Business.csproj", "Code/BugCheckYML.Business/"]
+COPY ["Code/BugCheckYML.Data/BugCheckYML.Data.csproj", "Code/BugCheckYML.Data/"]
+COPY ["Code/BugCheckYML.Entities/BugCheckYML.Entities.csproj", "Code/BugCheckYML.Entities/"]
+COPY ["Code/BugCheckYML.Test.Api/BugCheckYML.Test.Api.csproj", "Code/BugCheckYML.Test.Api/"]
+COPY ["Code/BugCheckYML.Test.Business/BugCheckYML.Test.Business.csproj", "Code/BugCheckYML.Test.Business/"]
+RUN dotnet restore "Code/BugCheckYML.Api/BugCheckYML.Api.csproj"
+COPY . .
+WORKDIR "/src/Code/BugCheckYML.Api"
+RUN dotnet build "BugCheckYML.Api.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "BugCheckYML.Api.csproj" -c Release -o /app/publish
+
+WORKDIR /src
+RUN dotnet test --results-directory /testresults --logger "trx;LogFileName=testresults.Api.trx" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=/testresults/coverage/ /p:MergeWith=/testresults/coverage/coverage.json "Code/BugCheckYML.Test.Api/BugCheckYML.Test.Api.csproj"
+RUN dotnet test --results-directory /testresults --logger "trx;LogFileName=testresults.Api.trx" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=/testresults/coverage/ /p:MergeWith=/testresults/coverage/coverage.json "Code/BugCheckYML.Test.Business/BugCheckYML.Test.Business.csproj"
